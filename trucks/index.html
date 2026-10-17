@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PEZ Trucks — Need Checker">
+<meta name="theme-color" content="#b3352c">
+<title>PEZ Trucks — Need Checker</title><style>
+:root{--bg:#faf7f2;--card:#fff;--ink:#26221d;--accent:#b3352c;--line:#e6ded2;--have:#2e7d32;--need:#b3352c;--close:#b26a00}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,system-ui,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--accent);color:#fff;padding:14px 16px}header h1{margin:0;font-size:20px}header p{margin:4px 0 0;font-size:13px;opacity:.92}
+.tabs{display:flex;gap:6px;padding:10px 12px 0}.tabs button{flex:1;padding:10px;border:1px solid var(--line);background:#fff;border-radius:10px 10px 0 0;font-size:14px;cursor:pointer}
+.tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+main{padding:12px;max-width:760px;margin:0 auto}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.view{display:none}.view.on{display:block}
+.step{margin-bottom:14px}.step h3{margin:0 0 8px;font-size:15px}.step .picked{font-size:15px;background:#f3efe7;border:1px solid var(--line);border-radius:8px;padding:9px 11px;cursor:pointer}
+.step .picked b{color:var(--accent)}
+.opts{display:flex;flex-wrap:wrap;gap:8px}.opts button{padding:9px 13px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:14px;cursor:pointer}
+.opts button small{color:#8a8175}
+.counts{font-size:13px;color:#6d6459;margin:10px 0}
+.banner{border-radius:10px;padding:13px;font-weight:700;font-size:17px;display:none;margin-bottom:12px}
+.banner.need{display:block;background:#fdeceb;color:var(--need);border:1.5px solid var(--need)}
+.banner.have{display:block;background:#e8f5e9;color:var(--have);border:1.5px solid var(--have)}
+.banner.close{display:block;background:#fff4e0;color:var(--close);border:1.5px solid var(--close)}
+.banner.none{display:block;background:#eeeeee;color:#555;border:1.5px solid #999}
+.match{border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;display:flex;gap:10px;align-items:center}
+.match img{width:54px;height:54px;object-fit:cover;border-radius:8px}
+.match .t{font-size:13px}.fine{font-size:12px;color:#6d6459}
+input[type=search]{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+td img{width:44px;height:44px;object-fit:cover;border-radius:6px}
+.group h3{margin:16px 0 6px}.need-item{display:flex;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:#fff}
+.need-item input{width:22px;height:22px;flex:none;margin-top:2px}.need-item.got{opacity:.45}.need-item.got .t{text-decoration:line-through}
+button.reset{padding:9px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:14px}
+.small{font-size:12.5px;color:#6d6459}
+</style></head><body><header><h1>🚛 PEZ Trucks — Need Checker</h1><p>319 catalogued · 233 you have · 86 you need — works offline, data as of Oct 2026</p></header>
+<div class="tabs"><button data-v="vcheck" class="on">Checker</button><button data-v="vneed">Need list</button><button data-v="vhave">Have list</button></div>
+<main>
+<section id="vcheck" class="view on"><div class="card">
+<p class="small">Holding a truck? Answer what you can see on it, step by step. Choices only list traits found on trucks you still need, and narrow as you go. Any / skip moves on without narrowing. Tap a finished step to change it.</p>
+<div id="banner" class="banner"></div>
+<div id="steps"></div>
+<p class="counts" id="counts"></p>
+<button class="reset" id="reset">Start over</button>
+</div></section>
+<section id="vneed" class="view"><div class="card">
+<h3 id="still"></h3>
+<input type="search" id="nq" placeholder="Filter the need list...">
+<div id="needlist"></div>
+</div></section>
+<section id="vhave" class="view"><div class="card">
+<input type="search" id="hq" placeholder="Search what you have...">
+<table><tbody id="havetbody"></tbody></table>
+</div></section>
+</main>
+<script src="data-1.js"></script><script src="data-2.js"></script><script src="pics-1.js"></script><script src="pics-2.js"></script><script src="pics-3.js"></script><script src="pics-4.js"></script><script src="pics-5.js"></script><script src="pics-6.js"></script>
+<script>
+const STEPS=[{"key": "Description", "label": "Model"}, {"key": "Head Color", "label": "Head color"}, {"key": "Stem Color", "label": "Stem color"}, {"key": "Stem Design", "label": "Stem design"}, {"key": "Series", "label": "Series"}, {"key": "Fender", "label": "Fender"}, {"key": "Tires", "label": "Tires"}, {"key": "Grill Color", "label": "Grill color"}, {"key": "V - Grill", "label": "V-grill"}], GROUP="Description", LS="pez-trucks-got";
+const state={}; let cur=0;
+function pool(){return NEEDS.length?DATA.filter(d=>!d.acq):DATA.slice();}
+function optsFor(k){
+  let p=pool(); const upto=STEPS.findIndex(s=>s.key===k);
+  STEPS.slice(0,upto).forEach(s=>{ if(state[s.key]) p=p.filter(d=>d.vals[s.key]===state[s.key]); });
+  const c={}; p.forEach(d=>{const v=d.vals[k]; if(v) c[v]=(c[v]||0)+1;});
+  return Object.entries(c).sort((a,b)=>a[0].localeCompare(b[0]));
+}
+function matches(){ let p=DATA.slice(); STEPS.forEach(s=>{ if(state[s.key]) p=p.filter(d=>d.vals[s.key]===state[s.key]); }); return p; }
+function traits(d,skipGroup){ return STEPS.filter(s=>d.vals[s.key]&&(!skipGroup||s.key!==GROUP)).map(s=>s.label+': '+d.vals[s.key]).join(' · '); }
+function matchHTML(d){
+  const img=(PICS[String(d.i)]&&d.pic)?'<img src="'+PICS[String(d.i)]+'" alt="">':'';
+  let h='<div class="match">'+img+'<div><div class="t">'+traits(d)+'</div>';
+  if(d.fine) h+='<div class="fine">Fine print: '+d.fine+'</div>';
+  if(d.notes) h+='<div class="fine">Catalog: '+d.notes+'</div>';
+  return h+'</div></div>';
+}
+function run(){
+  const wrap=document.getElementById('steps'); wrap.innerHTML='';
+  STEPS.forEach((s,idx)=>{
+    const div=document.createElement('div'); div.className='step';
+    if(idx<cur){ div.innerHTML='<div class="picked" data-i="'+idx+'">'+s.label+': <b>'+(state[s.key]?state[s.key]:'Any')+'</b> — tap to change</div>';
+      div.querySelector('.picked').onclick=()=>{cur=idx; run(); setTimeout(()=>div.scrollIntoView({block:'start',behavior:'smooth'}),30);}; }
+    else if(idx===cur){
+      let h='<h3>'+s.label+'</h3><div class="opts">';
+      optsFor(s.key).forEach(([v,n])=>{ h+='<button data-v="'+v.replace(/"/g,'&quot;')+'">'+v+' <small>'+n+'</small></button>'; });
+      h+='<button data-v="">Any / skip</button></div>';
+      div.innerHTML=h;
+      div.querySelectorAll('button').forEach(b=>b.onclick=()=>{ state[s.key]=b.dataset.v||null; if(!b.dataset.v) delete state[s.key]; cur++; run(); const nx=wrap.children[cur]; if(nx) setTimeout(()=>nx.scrollIntoView({block:'start',behavior:'smooth'}),30); });
+    }
+    wrap.appendChild(div);
+  });
+  const m=matches(), mn=m.filter(d=>!d.acq), mh=m.filter(d=>d.acq);
+  document.getElementById('counts').textContent = 'Still matching: '+mn.length+' you need · '+mh.length+' you have';
+  const b=document.getElementById('banner');
+  if(cur>=STEPS.length){
+    if(mn.length&&mh.length){ b.className='banner close'; b.innerHTML='⚠️ CLOSE CALL — traits match both sides. Check the fine print:'+mn.concat(mh).map(matchHTML).join(''); }
+    else if(mn.length){ b.className='banner need'; b.innerHTML='🛒 NEED IT — on your need list:'+mn.map(matchHTML).join(''); }
+    else if(mh.length){ b.className='banner have'; b.innerHTML='✅ YOU HAVE IT:'+mh.map(matchHTML).join(''); }
+    else { b.className='banner none'; b.textContent='❓ NOT IN YOUR DATABASE — not catalogued as have or need. Could be a new find.'; }
+  } else { b.className='banner'; b.innerHTML=''; }
+}
+document.getElementById('reset').onclick=()=>{ for(const k in state) delete state[k]; cur=0; run(); window.scrollTo({top:0,behavior:'smooth'}); };
+// need list
+const got=JSON.parse(localStorage.getItem(LS)||'{}');
+function renderNeeds(){
+  const q=(document.getElementById('nq').value||'').toLowerCase(); const wrap=document.getElementById('needlist'); wrap.innerHTML='';
+  document.getElementById('still').textContent='Still to find: '+NEEDS.filter(d=>!got[d.i]).length+' of '+NEEDS.length;
+  const groups={}; NEEDS.forEach(d=>{ const g=d.vals[GROUP]||'(unspecified)'; (groups[g]=groups[g]||[]).push(d); });
+  Object.keys(groups).sort().forEach(g=>{
+    const items=groups[g].filter(d=>!q||traits(d).toLowerCase().includes(q)||g.toLowerCase().includes(q));
+    if(!items.length) return;
+    const gh=document.createElement('div'); gh.className='group'; gh.innerHTML='<h3>'+g+' ('+items.length+')</h3>';
+    items.forEach(d=>{
+      const div=document.createElement('div'); div.className='need-item'+(got[d.i]?' got':'');
+      let h='<input type="checkbox" '+(got[d.i]?'checked':'')+'><div><div class="t">'+traits(d,true)+'</div>';
+      if(d.fine) h+='<div class="fine">Fine print: '+d.fine+'</div>';
+      if(d.notes) h+='<div class="fine">Catalog: '+d.notes+'</div>';
+      div.innerHTML=h+'</div>';
+      div.querySelector('input').onchange=e=>{ got[d.i]=e.target.checked; localStorage.setItem(LS,JSON.stringify(got)); renderNeeds(); };
+      gh.appendChild(div);
+    });
+    wrap.appendChild(gh);
+  });
+}
+document.getElementById('nq').addEventListener('input',renderNeeds);
+// have list
+function renderHaves(){
+  const q=(document.getElementById('hq').value||'').toLowerCase(); const tb=document.getElementById('havetbody'); tb.innerHTML='';
+  HAVES.filter(d=>!q||traits(d).toLowerCase().includes(q)).forEach(d=>{
+    const tr=document.createElement('tr');
+    const img=(PICS[String(d.i)]&&d.pic)?'<img src="'+PICS[String(d.i)]+'" alt="">':'';
+    tr.innerHTML='<td>'+img+'</td><td>'+traits(d)+((d.fine)?'<div class="fine">'+d.fine+'</div>':'')+'</td>';
+    tb.appendChild(tr);
+  });
+}
+document.getElementById('hq').addEventListener('input',renderHaves);
+document.querySelectorAll('.tabs button').forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on')); btn.classList.add('on');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.getElementById(btn.dataset.v).classList.add('on');
+});
+run(); renderNeeds(); renderHaves();
+</script></body></html>
