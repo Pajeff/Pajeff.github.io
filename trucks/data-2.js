@@ -1,0 +1,4 @@
+
+const NEEDS=DATA.filter(d=>!d.acq);
+const HAVES=DATA.filter(d=>d.acq);
+const OPTIONS={"Description": ["Cockta", "DR-1", "DR-1 (Joe's Trucks)", "DR-2", "DR-2 (Joe's Trucks)", "DR-3", "DR-3 (Joe's Trucks)", "DR-4", "DR-4 (Joe's Trucks)", "Power Trucks", "Virsona", "Wal*Mart", "Wal*Mart Tanker Cab", "Walmart"], "Head Color": ["Black", "Blue", "Gold", "Green", "Red", "Red Tanker Cab", "Silver", "White", "Yellow"], "Stem Color": ["Black", "Blue", "Glow In The Dark", "Green", "Neon Red", "Red", "White"], "Stem Design": ["Black 1964-1980 Logo", "Light Blue 2008-present Logo", "Navy Blue Logo", "PEZ", "Tanker", "www.virsona.com", "www.virsona.com and flames"], "Series": ["Advertising", "DR Series", "E Series", "F Series"], "Fender": ["Black", "Glow In The Dark", "Silver", "White"], "Tires": ["Black", "Orange", "Red"], "Grill Color": ["Green", "Red", "Silver"], "V - Grill": ["Yes"]};;
